@@ -1,0 +1,62 @@
+﻿@page "/chat"
+@using System.Drawing
+@using Microsoft.AspNetCore.SignalR.Client
+@rendermode InteractiveServer
+@inject IConfiguration Configuration
+
+<PageTitle>Chat</PageTitle>
+<input @bind="userInput" placeholder="Your name"/>
+<input @bind="messageInput" placeholder="Message"/>
+<button style="background-color:@( "#" + toHex(buttonColor) );" @onclick="SendMessage">Send</button>
+<br/>
+<br/>
+<button @onclick="TestMethod">Color</button>
+
+<p>@receivedMessage</p>
+
+
+@code
+{
+    private HubConnection? hubConnection;
+    private string receivedMessage = "Waiting for messages...";
+    private string userInput = "";
+    private string messageInput = "";
+
+    private Color buttonColor = Color.Green;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var backendUrl = Configuration["services:apiservice:https:0"];
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(backendUrl + "/chatHub") // Change to your backend URL
+            .Build();
+
+        hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
+        {
+            receivedMessage = $"{user}: {message}";
+            StateHasChanged();
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private void SendMessage()
+    {
+        Console.WriteLine("Onclick");
+        if (hubConnection is not null)
+        {
+            hubConnection.InvokeAsync("SendMessage", userInput, messageInput);
+        }
+    }
+
+    private void TestMethod()
+    {
+        buttonColor = Color.Red;
+    }
+
+    private string toHex(Color color)
+    {
+        var nColorWin32 = ColorTranslator.ToWin32(color);
+        return $"{nColorWin32:X8}";
+    }
+}
